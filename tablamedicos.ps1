@@ -53,7 +53,15 @@ if ($Continuar.toLower() -eq "s"){
         $Continuar = $(Write-Host "Esta OK?: " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
 
     }while($Continuar.ToLower() -eq "n")
-    $query = "SELECT apellido, nombre, documento, matriculaProvincial, matriculaNacional FROM dbo.Medicos where activo=1 and apellido like  `'%"+ $Response+"%`'";
-
+    $grabar = $(Write-Host "Estás seguro que querés guardar los cambios en la tabla médicos? (No hagas cagadas te lo pido por favor): " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
+    if ($grabar.toLower() -eq "s"){
+        $query = "INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo) VALUES (N`'"+ $apellido+"`',N`'"+ $nombre+"`',"+ $dni+", 2,1)";
+        $sqlcmd.CommandText = $query
+        $adp = New-Object System.Data.SqlClient.SqlDataAdapter $sqlcmd
+        $data = New-Object System.Data.DataSet
+        $adp.Fill($data) | Out-Null
+        $data.Tables
+        #Write-Output $query
+    }
 }
 else{exit}
