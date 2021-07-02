@@ -11,14 +11,14 @@ do{
     switch($choice.ToLower())
     {
         "d" {$Response = Read-Host "Escribi el DNI del médico para buscarlo en la Tabla Médicos";
-            if (($Response -match '^[\d]+$') -eq $false) {exit};
+            if (($Response -match '^[\d]+$') -eq $false) {$sqlConn.Close();exit};
             $query = "SELECT apellido, nombre, documento, matriculaProvincial, matriculaNacional FROM dbo.Medicos where activo=1 and documento="+$Response;          
             }
         "a" {[String]$Response = Read-Host "Escribi el Apellido del médico para buscarlo en la Tabla Médicos";         
-            if (($Response -match '^[a-zA-Z]+$') -eq $false) {exit};
+            if (($Response -match '^[a-zA-Z]+$') -eq $false) {$sqlConn.Close();exit};
             $query = "SELECT apellido, nombre, documento, matriculaProvincial, matriculaNacional FROM dbo.Medicos where activo=1 and apellido like  `'%"+ $Response+"%`'";
             }
-        default { "Comés plastilina?"; exit }
+        default { "Comés plastilina?";$sqlConn.Close(); exit }
     }
 #echo $query
     $sqlcmd.CommandText = $query
@@ -56,12 +56,28 @@ if ($Continuar.toLower() -eq "s"){
     $grabar = $(Write-Host "Estás seguro que querés guardar los cambios en la tabla médicos? (No hagas cagadas te lo pido por favor): " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
     if ($grabar.toLower() -eq "s"){
         $query = "INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo) VALUES (N`'"+ $apellido+"`',N`'"+ $nombre+"`',"+ $dni+", 2,1)";
-        $sqlcmd.CommandText = $query
-        $adp = New-Object System.Data.SqlClient.SqlDataAdapter $sqlcmd
-        $data = New-Object System.Data.DataSet
-        $adp.Fill($data) | Out-Null
-        $data.Tables
+        #$sqlcmd.CommandText = $query
+        #$adp = New-Object System.Data.SqlClient.SqlDataAdapter 
+        #$adp.InsertCommand = $sqlcmd;
+        #$ErrorActionPreference = 'SilentlyContinue';
+        #write-out $sqlcmd.ExecuteScalar();
+        #$sqlcmd.ExecuteReader();
         #Write-Output $query
+        #$reader = $sqlCmd.ExecuteReader()
+        #$tables = @()
+        #while ($reader.Read()) {
+        #    $tables += $reader["TABLE_NAME"]
+        #}
+        #$reader.Close()
+
+        $sqlcmd.CommandText= "INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo) VALUES (@apellido, @nombre, @documento, @hospitalPrincipal, @activo)"
+        $sqlcmd.Parameters.Add("@apellido", [Data.SQLDBType]::VarChar, 200).Value = $apellido;
+        $sqlcmd.Parameters.Add("@nombre",  [Data.SQLDBType]::VarChar, 200).Value = $nombre;
+        $sqlcmd.Parameters.Add("@documento", [Data.SQLDBType]::Int).Value = $dni;
+        $sqlcmd.Parameters.Add("@activo",  [Data.SQLDBType]::Int).Value = 1;
+        $sqlcmd.Parameters.Add("@hospitalPrincipal", [Data.SQLDBType]::Int).Value = 2;
+        $sqlcmd.ExecuteNonQuery();
     }
 }
-else{exit}
+else{$sqlConn.Close();exit}
+$sqlConn.Close();
