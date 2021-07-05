@@ -209,7 +209,7 @@ if ($Continuar.toLower() -eq "s"){
 }
 }
 
-connexiondb
+
 
 showmenu
  
