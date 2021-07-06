@@ -14,7 +14,21 @@ Function showmenu {
     Write-Host "7. Actualizar Tabla Medicos_Funciones"
     Write-Host "8. Exit"
 }
-
+function insertdb{
+    param (
+    $query
+    )
+    $sqlcmd = New-Object System.Data.SqlClient.SqlCommand
+    $sqlConn = New-Object System.Data.SqlClient.SqlConnection
+    $sqlConn.ConnectionString = $connectionString
+    $sqlConn.Open()
+    $sqlcmd.Connection = $sqlConn
+    $sqlcmd.CommandText= $query
+    Write-Output 'intento insert'     
+    $sqlcmd.ExecuteNonQuery();
+    $sqlConn.Close();
+    pause
+}
 function querydb {
     param (
         $query
@@ -30,12 +44,7 @@ function querydb {
     $data = New-Object System.Data.DataSet
     $adp.Fill($data) | Out-Null    
     $sqlConn.Close()
-    #DataRow[] foundRows;
-    #$foundRows = $data.
-    #$datos=$data.Tables[0]
-    #Write-Output  $datos[0]
-    return $data 
-    
+    return $data  
 }
 function updatedb($id,[String]$row,$value){ 
     $sqlcmd = New-Object System.Data.SqlClient.SqlCommand
@@ -63,7 +72,7 @@ function buscarmedicoporid {
     #Write-Output $query
     $data = New-Object System.Data.DataSet
 
-    $data=querydb($query)
+    $data=querydb $query
 
     return $data
 
@@ -80,7 +89,7 @@ function buscarmedico {
                 if (($Response -match '^[\d]+$') -eq $false) {break};
                 $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo="+$activo+" and documento="+$Response;          
                 $data = New-Object System.Data.DataSet
-                $data=querydb($query)#.rows.count# -eq 0){Write-Output "Sin Resultados"}
+                $data=querydb $query#.rows.count# -eq 0){Write-Output "Sin Resultados"}
                 foreach ($Row in $data.tables[0].Rows){
                     Write-Output $Row
                 }
@@ -91,7 +100,7 @@ function buscarmedico {
                 if (($Response -match '^[a-zA-Z]+$') -eq $false) {break};
                 $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo="+$activo+"  and apellido like  `'%"+ $Response+"%`'";
                 $data = New-Object System.Data.DataSet
-                $data=querydb($query)
+                $data=querydb $query
                 foreach ($Row in $data.tables[0].Rows){
                     Write-Output $Row
                 }
@@ -190,11 +199,7 @@ function insertarmedico {
     $Continuar = $(Write-Host "Desea Insertar un Médico " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
 if ($Continuar.toLower() -eq "s"){
     do{
-        $sqlcmd = New-Object System.Data.SqlClient.SqlCommand
-        $sqlConn = New-Object System.Data.SqlClient.SqlConnection
-        $sqlConn.ConnectionString = $connectionString
-        $sqlConn.Open()
-        $sqlcmd.Connection = $sqlConn
+
         do{
             $dni = Read-Host "Escribi el DNI";
         }while (-not ($dni -match '^[\d]+$'))
@@ -226,20 +231,33 @@ if ($Continuar.toLower() -eq "s"){
         $Continuar = $(Write-Host "Esta OK? " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
 
     }while($Continuar.ToLower() -eq "n")
+    $data = New-Object System.Data.DataSet
+    $query = "select id, numero, documento, Apellido, nombre from Personal_Agentes where documento= $dni"
+       
+    $data=querydb $query
+
+    foreach ($Row in $data.tables[0].Rows){
+        Write-Output $Row
+    }
+    Write-Output "Cantidad de resultados en Tabla Personal Agentes" $data.tables[0].Rows.count
+    switch ($data.tables[0].Rows.count) {
+        0 {
+            Write-Output "No existe ningún agente cargado con el DNI Ingresado. Si es agente es de reciente ingreso puede no haber sido dado de alta aún, en cuyo caso puede cargarse con el DNI. Caso contrario reportar el problema a Plataforma"
+            do{
+                $Continuar = $(Write-Host "¿Desea cargar con Numero de Agente igual al DNI?" -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
+            } while ((not($Continuar.ToLower() -eq "s")) -and (not($Continuar.ToLower() -eq "n"))) 
+            if ($Continuar.ToLower -eq 's') {$numeroagente=$dni} else {return}
+        }
+        1 {$numeroagente=$data.tables[0].Rows["numero"]
+        }
+        Default {Write-Output "Existe más de un agente con ese dni en la base de datos. Reportar el problema a Plataforma";return}
+    }
     $grabar = $(Write-Host "Estás seguro que querés guardar los cambios en la tabla médicos? (No hagas cagadas te lo pido por favor) " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
     if ($grabar.toLower() -eq "s"){
         if ($interno -eq 0) {$interno=585} else {$interno=2}
-        Write-Output $interno
-        $sqlcmd.CommandText= "INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo,patologo) VALUES (@apellido, @nombre, @documento, @hospitalPrincipal, @activo,@patologo)"
-        $sqlcmd.Parameters.Add("@apellido", [Data.SQLDBType]::VarChar, 200).Value = $apellido;
-        $sqlcmd.Parameters.Add("@nombre",  [Data.SQLDBType]::VarChar, 200).Value = $nombre;
-        $sqlcmd.Parameters.Add("@documento", [Data.SQLDBType]::Int).Value = $dni;
-        $sqlcmd.Parameters.Add("@activo",  [Data.SQLDBType]::Int).Value = 1;
-        $sqlcmd.Parameters.Add("@hospitalPrincipal", [Data.SQLDBType]::Int).Value = $interno;
-        $sqlcmd.Parameters.Add("@patologo", [Data.SQLDBType]::Int).Value = $pat;
-        $sqlcmd.ExecuteNonQuery();
-        $sqlConn.Close();
-        pause
+        #Write-Output $interno
+        $query ="INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo,patologo,numeroAgente) VALUES ($apellido, $nombre, $dni, $interno, 1,$pat,$numeroAgente)"
+        insertdb $query
         
     }
 }
@@ -257,7 +275,7 @@ function actualizarfunciones{
     Write-Output "cantidad de resultados" $data.tables[0].Rows.count
     $query = "SELECT idMedico,idFuncion FROM dbo.Medicos_Funciones where idMedico= $idmedico"  
     #Write-Output $query        
-    $data=querydb($query)    
+    $data=querydb $query    
     foreach ($Row in $data.tables[0].Rows){
         Write-Output $Row
     }
@@ -284,16 +302,8 @@ function actualizarfunciones{
         foreach ($Row in $data.tables[0].Rows){ #controla que no tenga cargada la función
                 if ( $Row["idFuncion"] -eq $funcion){Write-Output "Ya esta cargada la función salamx";exit}
             }
-        $sqlcmd = New-Object System.Data.SqlClient.SqlCommand
-        $sqlConn = New-Object System.Data.SqlClient.SqlConnection
-        $sqlConn.ConnectionString = $connectionString
-        $sqlConn.Open()
-        $sqlcmd.Connection = $sqlConn
-        $sqlcmd.CommandText= "INSERT INTO dbo.Medicos_Funciones  (idMedico, idFuncion) VALUES ($idmedico,'$funcion')"
-        Write-Output $sqlcmd.CommandText
-        $sqlcmd.ExecuteNonQuery();
-        $sqlConn.Close();
-        pause
+        $query= "INSERT INTO dbo.Medicos_Funciones  (idMedico, idFuncion) VALUES ($idmedico,'$funcion')"
+        insertdb $query
     }else {exit}
 }
 showmenu
