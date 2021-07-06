@@ -15,9 +15,7 @@ Function showmenu {
     Write-Host "8. Exit"
 }
 function insertdb{
-    param (
-    $query
-    )
+    param ($query )
     $sqlcmd = New-Object System.Data.SqlClient.SqlCommand
     $sqlConn = New-Object System.Data.SqlClient.SqlConnection
     $sqlConn.ConnectionString = $connectionString
@@ -30,9 +28,7 @@ function insertdb{
     pause
 }
 function querydb {
-    param (
-        $query
-    )
+    param ( $query )
     $sqlcmd = New-Object System.Data.SqlClient.SqlCommand
     $sqlConn = New-Object System.Data.SqlClient.SqlConnection
     $sqlConn.ConnectionString = $connectionString
@@ -46,7 +42,7 @@ function querydb {
     $sqlConn.Close()
     return $data  
 }
-function updatedb($id,[String]$row,$value){ 
+function updatedb($id,$row,$value){ 
     $sqlcmd = New-Object System.Data.SqlClient.SqlCommand
     $sqlConn = New-Object System.Data.SqlClient.SqlConnection
     $sqlConn.ConnectionString = $connectionString
@@ -60,24 +56,18 @@ function updatedb($id,[String]$row,$value){
     if ($sqlcmd.ExecuteNonQuery() -eq 1) {Write-Output "Éxito"} else {Write-Output "Falló"}
     $sqlConn.Close()
     pause
-    
 }
 
 
 function buscarmedicoporid {
-    param (
-        $id, $activo
-    )
-    $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo=$activo and id= $id";
+    param ( $id, $activo )
+    $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo=$activo and id= $id"
     #Write-Output $query
     $data = New-Object System.Data.DataSet
-
     $data=querydb $query
-
     return $data
-
 }
-function buscarmedico {
+function buscarmedico{
     param(
         $activo
     )
@@ -85,19 +75,16 @@ function buscarmedico {
         $choice = $(Write-Host "Buscar por DNI " -NoNewLine) + $(Write-Host "[d] " -ForegroundColor yellow -NoNewLine)+$(Write-Host "o por Apellido" -NoNewLine) + $(Write-Host "[a] " -ForegroundColor yellow ; Read-Host)
         switch($choice.ToLower())
         {
-            "d" {$Response = Read-Host "Escribi el DNI del médico para buscarlo en la Tabla Médicos";
+            "d" {$Response = Read-Host "Escribi el DNI del médico para buscarlo en la Tabla Médicos"
                 if (($Response -match '^[\d]+$') -eq $false) {break};
-                $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo="+$activo+" and documento="+$Response;          
+                $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo=$activo and documento=$Response"        
                 $data = New-Object System.Data.DataSet
-                $data=querydb $query#.rows.count# -eq 0){Write-Output "Sin Resultados"}
-                foreach ($Row in $data.tables[0].Rows){
-                    Write-Output $Row
-                }
+                $data=querydb $query 
+                foreach ($Row in $data.tables[0].Rows){Write-Output $Row }
                 Write-Output "cantidad de resultados" $data.tables[0].Rows.count
-                
-                }
-            "a" {[String]$Response = Read-Host "Escribi el Apellido del médico para buscarlo en la Tabla Médicos";         
-                if (($Response -match '^[a-zA-Z]+$') -eq $false) {break};
+                break}
+            "a" {$Response = Read-Host "Escribi el Apellido del médico para buscarlo en la Tabla Médicos"      
+                if (($Response -match '^[a-zA-Z]+$') -eq $false) {break}
                 $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo="+$activo+"  and apellido like  `'%"+ $Response+"%`'";
                 $data = New-Object System.Data.DataSet
                 $data=querydb $query
@@ -105,7 +92,7 @@ function buscarmedico {
                     Write-Output $Row
                 }
                 Write-Output "cantidad de resultados" $data.tables[0].Rows.count
-
+                break
                 }
             default { "Comés plastilina?" }
         }
@@ -139,7 +126,7 @@ function actualizarmatricula {
             }while ((-not ($Continuar.ToLower() -match '^s$')) -and (-not ($Continuar.ToLower() -match '^n$')))
             if ($Continuar.ToLower() -eq 'n') {exit}
             updatedb $idmedico "matriculaProvincial" $matr
-            
+            break
         }
         "n"{Write-Host "Nueva Matrícula Nacional " -NoNewLine;
             Write-Host $matr  -ForegroundColor yellow;
@@ -148,9 +135,9 @@ function actualizarmatricula {
             }while ((-not ($Continuar.ToLower() -match '^s$')) -and (-not ($Continuar.ToLower() -match '^n$')))
             if ($Continuar.ToLower() -eq 'n') {exit}
             updatedb $idmedico "matriculaNacional" $matr
-            
+            break
     }
-        default {"nada..";exit}
+        default {"nada..";break}
     } 
 }
 
@@ -196,13 +183,19 @@ function actualizarinterno {
 }
 
 function insertarmedico {
-    $Continuar = $(Write-Host "Desea Insertar un Médico " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-if ($Continuar.toLower() -eq "s"){
+    
     do{
-
-        do{
-            $dni = Read-Host "Escribi el DNI";
-        }while (-not ($dni -match '^[\d]+$'))
+        $dni = Read-Host "Escribi el DNI";
+    }while (-not ($dni -match '^[\d]+$'))
+    do{
+        $pat = Read-Host "Es Patólogo 1=SI 0=NO";
+    }while (-not ($pat -match '^[1|0]$'))
+    do{
+        $Continuar = $(Write-Host "Desea Insertar un Médico Externo " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
+    }while ((-not($Continuar.toLower() -eq "s")) -and (-not($Continuar.toLower() -eq "n")))
+    if ($Continuar.toLower() -eq "s"){
+        $interno=0
+        $numeroagente=$dni
         do{
             $nombre = Read-Host "Escribi el Nombre";
             if ((-not ($nombre -match '.*''''.*')) -and (($nombre -match '.*''.*'))) {$nombre=$nombre.Replace('''','''''')}
@@ -211,57 +204,70 @@ if ($Continuar.toLower() -eq "s"){
             $apellido = Read-Host "Escribi el Apellido";
             if ((-not ($apellido -match '.*''''.*')) -and (($apellido -match '.*''.*'))) {$apellido=$apellido.Replace('''','''''')}
         }while (-not ($apellido -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
-        do{
-            $interno = Read-Host "Trabaja en Hospital 1=SI 0=NO";
-        }while (-not ($interno -match '^[1|0]$'))
-        do{
-            $pat = Read-Host "Es Patólogo 1=SI 0=NO";
-        }while (-not ($pat -match '^[1|0]$'))
-
-        Write-Host "Apellido: " -NoNewline 
-        Write-Host  $apellido -ForegroundColor yellow
-        Write-Host "Nombre: " -NoNewLine 
-        Write-Host $nombre -ForegroundColor yellow
-        Write-Host "DNI: " -NoNewLine 
-        Write-Host $dni  -ForegroundColor yellow
-        Write-Host "Trabaja en Hospital 1=SI 0=NO: " -NoNewLine 
-        Write-Host $interno  -ForegroundColor yellow 
-        Write-Host "Patólogo 1=SI 0=NO: " -NoNewLine 
-        Write-Host $pat  -ForegroundColor yellow 
-        $Continuar = $(Write-Host "Esta OK? " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-
-    }while($Continuar.ToLower() -eq "n")
-    $data = New-Object System.Data.DataSet
-    $query = "select id, numero, documento, Apellido, nombre from Personal_Agentes where documento= $dni"
-       
-    $data=querydb $query
-
-    foreach ($Row in $data.tables[0].Rows){
-        Write-Output $Row
     }
-    Write-Output "Cantidad de resultados en Tabla Personal Agentes" $data.tables[0].Rows.count
-    switch ($data.tables[0].Rows.count) {
-        0 {
-            Write-Output "No existe ningún agente cargado con el DNI Ingresado. Si es agente es de reciente ingreso puede no haber sido dado de alta aún, en cuyo caso puede cargarse con el DNI. Caso contrario reportar el problema a Plataforma"
-            do{
-                $Continuar = $(Write-Host "¿Desea cargar con Numero de Agente igual al DNI?" -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-            } while ((not($Continuar.ToLower() -eq "s")) -and (not($Continuar.ToLower() -eq "n"))) 
-            if ($Continuar.ToLower -eq 's') {$numeroagente=$dni} else {return}
+    else{
+        $interno=1
+        $data = New-Object System.Data.DataSet
+        $query = "select id, numero, documento, Apellido, nombre from Personal_Agentes where documento= '$dni'"
+        #Write-Output $query
+        $data=querydb $query
+        foreach ($Row in $data.tables[0].Rows){
+            Write-Output $Row
         }
-        1 {$numeroagente=$data.tables[0].Rows["numero"]
+        Write-Output "Cantidad de resultados en Tabla Personal Agentes" $data.tables[0].Rows.count
+        switch ($data.tables[0].Rows.count) {
+            0 {
+                Write-Output "No existe ningún agente cargado con el DNI Ingresado. Si es agente es de reciente ingreso puede no haber sido dado de alta aún, en cuyo caso puede cargarse con el DNI. Caso contrario reportar el problema a Plataforma"
+                do{
+                    $Continuar = $(Write-Host "¿Desea cargar con Numero de Agente igual al DNI?" -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
+                } while ((not($Continuar.ToLower() -eq "s")) -and (not($Continuar.ToLower() -eq "n"))) 
+                if ($Continuar.ToLower -eq 's') {
+                    $numeroagente=$dni
+                    do{
+                        $nombre = Read-Host "Escribi el Nombre";
+                        if ((-not ($nombre -match '.*''''.*')) -and (($nombre -match '.*''.*'))) {$nombre=$nombre.Replace('''','''''')}
+                    }while (-not ($nombre -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
+                    do{
+                        $apellido = Read-Host "Escribi el Apellido";
+                        if ((-not ($apellido -match '.*''''.*')) -and (($apellido -match '.*''.*'))) {$apellido=$apellido.Replace('''','''''')}
+                    }while (-not ($apellido -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
+                } else {return}
+                break
+            }
+            1 {
+                #$numeroagente=
+                $numeroagente= $data.tables[0].Rows[0]["numero"]  
+                $apellido= $data.tables[0].Rows[0]["Apellido"]
+                $nombre = $data.tables[0].Rows[0]["nombre"]
+                break
+            }
+            Default {
+                Write-Output "Existe más de un agente con ese dni en la base de datos. Reportar el problema a Plataforma"
+                return
+            }
         }
-        Default {Write-Output "Existe más de un agente con ese dni en la base de datos. Reportar el problema a Plataforma";return}
-    }
+        }
+    Write-Host "Apellido: " -NoNewline 
+    Write-Host  $apellido -ForegroundColor yellow
+    Write-Host "Nombre: " -NoNewLine 
+    Write-Host $nombre -ForegroundColor yellow
+    Write-Host "DNI: " -NoNewLine 
+    Write-Host $dni  -ForegroundColor yellow
+    Write-Host "Trabaja en Hospital 1=SI 0=NO: " -NoNewLine 
+    Write-Host $interno  -ForegroundColor yellow 
+    Write-Host "Patólogo 1=SI 0=NO: " -NoNewLine 
+    Write-Host $pat  -ForegroundColor yellow 
     $grabar = $(Write-Host "Estás seguro que querés guardar los cambios en la tabla médicos? (No hagas cagadas te lo pido por favor) " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
     if ($grabar.toLower() -eq "s"){
         if ($interno -eq 0) {$interno=585} else {$interno=2}
         #Write-Output $interno
-        $query ="INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo,patologo,numeroAgente) VALUES ($apellido, $nombre, $dni, $interno, 1,$pat,$numeroAgente)"
+        $query ="INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo,patologo,numeroAgente) VALUES ('$apellido', '$nombre', '$dni', $interno, 1,$pat,'$numeroagente')"
+        #Write-Output $query
         insertdb $query
         
     }
 }
-}
+
 function actualizarfunciones{
     do{
         $idmedico = Read-Host "Ingrese Id Médico";
