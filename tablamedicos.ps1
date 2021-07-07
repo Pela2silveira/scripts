@@ -115,7 +115,7 @@ function actualizarmatricula {
         }
         if ($data.tables[0].Rows.count -eq 0) {exit}
         $Continuar = $(Write-Host "Esta OK? [S/N] o Cancelar [C] " -NoNewLine) + $(Write-Host "[S/N/C]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-    }while ((-not ($Continuar.ToLower() -match '^s$')) -and (-not ($Continuar.ToLower() -match '^n$')) -and (-not ($Continuar.ToLower() -match '^c$')))
+    }while (-not ($Continuar.ToLower() -match '^[s|c|n]$'))
     if ($Continuar.ToLower() -eq 'c') {exit}
     $tipomatricula = $(Write-Host "Actualizar Matricula Provincial [P] o Nacional [N] " -NoNewLine) + $(Write-Host "[P/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
     switch($tipomatricula.ToLower()){
@@ -123,7 +123,7 @@ function actualizarmatricula {
             Write-Host $matr  -ForegroundColor yellow;
             do{
                 $Continuar = $(Write-Host "Proceder? [S/N] " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-            }while ((-not ($Continuar.ToLower() -match '^s$')) -and (-not ($Continuar.ToLower() -match '^n$')))
+            }while (-not ($Continuar.ToLower() -match '^[s|n]$'))
             if ($Continuar.ToLower() -eq 'n') {exit}
             updatedb $idmedico "matriculaProvincial" $matr
             break
@@ -132,7 +132,7 @@ function actualizarmatricula {
             Write-Host $matr  -ForegroundColor yellow;
             do{
                 $Continuar = $(Write-Host "Proceder? [S/N] " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-            }while ((-not ($Continuar.ToLower() -match '^s$')) -and (-not ($Continuar.ToLower() -match '^n$')))
+            }while (-not ($Continuar.ToLower() -match '^[s|n]$'))
             if ($Continuar.ToLower() -eq 'n') {exit}
             updatedb $idmedico "matriculaNacional" $matr
             break
@@ -158,11 +158,10 @@ function actualizaractivo {
         }
         if ($data.tables[0].Rows.count -eq 0) {exit} 
         $Continuar = $(Write-Host "Esta OK? [S/N] o Cancelar [C] " -NoNewLine) + $(Write-Host "[S/N/C]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-    }while ((-not ($Continuar.ToLower() -match '^s$')) -and (-not ($Continuar.ToLower() -match '^n$')) -and (-not ($Continuar.ToLower() -match '^c$')))
+    }while (-not ($Continuar.ToLower() -match '^[s|n|c]$'))
     if ($Continuar.ToLower() -eq 'c') {exit}
     updatedb $idmedico "activo" $activo
 }
-
 function actualizarinterno {
     do{
         do{
@@ -175,96 +174,120 @@ function actualizarinterno {
         $data = buscarmedicoporid $idmedico 1
         if ($data.tables[0].Rows.count -eq 0) {exit}
         $Continuar = $(Write-Host "Esta OK? [S/N] o Cancelar [C] " -NoNewLine) + $(Write-Host "[S/N/C]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-    }while ((-not ($Continuar.ToLower() -match '^s$')) -and (-not ($Continuar.ToLower() -match '^n$')) -and (-not ($Continuar.ToLower() -match '^c$')))
+    }while (-not ($Continuar.ToLower() -match '^[s|n|c]$'))
     if ($Continuar.ToLower() -eq 'c') {exit}
     if ($interno -eq 0) {$interno=585} else {$interno=2}
     updatedb $idmedico "hospitalPrincipal" $interno
     pause
 }
 
-function insertarmedico {
-    
+function insertarmedico {    
     do{
         $dni = Read-Host "Escribi el DNI";
     }while (-not ($dni -match '^[\d]+$'))
+    $medicos = New-Object System.Data.DataSet
+    $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo=1 and documento=$dni" 
+    $medicos = querydb $query
+    switch ($medicos.tables[0].Rows.count){
+        0 { break
+        }
+        1 { write-output "Ya está cargado"              
+            foreach ($Row in $medicos.tables[0].Rows){
+                Write-Output $Row
+            }
+          pause
+          return
+        }
+        default { "Hay mas de un profesional. Inconsitencia de Base Datos. Informar a Plataforma"
+            foreach ($Row in $medicos.tables[0].Rows){
+                Write-Output $Row
+                }
+            pause
+            return
+        }
+    }
+    $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo=0 and documento=$dni" 
+    $medicos = querydb $query
+    switch ($medicos.tables[0].Rows.count){
+        0 { break
+        }
+        1 { write-output "El médico esta cargado pero inactivo. Activarlo desde el menu principal."              
+            foreach ($Row in $medicos.tables[0].Rows){
+                Write-Output $Row
+            }
+          pause
+          return
+        }
+        default { "Hay mas de un profesional. Inconsitencia de Base Datos. Informar a Plataforma"
+            foreach ($Row in $medicos.tables[0].Rows){
+                Write-Output $Row
+                }
+            pause
+            return
+        }
+    }
+    Write-Output "Tabla Personal Agentes"
+    $agentes = New-Object System.Data.DataSet
+    $query = "select id, numero, documento, Apellido, nombre from Personal_Agentes where documento= '$dni'"
+    #Write-Output $query
+    $agentes=querydb $query
+    foreach ($Row in $agentes.tables[0].Rows){
+        Write-Output $Row
+        }
+    Write-Output "Cantidad de resultados en Tabla Personal Agentes" $data.tables[0].Rows.count
+    switch ($agentes.tables[0].Rows.count) {
+        0 { Write-Output "No existe ningún agente cargado con el DNI Ingresado."
+            Write-Output "Si es agente es de reciente ingreso puede no haber sido dado de alta aún, o también ser personal externo, en cuyo caso puede cargarse con el DNI."
+            Write-Output "Caso contrario reportar el problema a Plataforma."      
+            do{
+                $Continuar = $(Write-Host "¿Desea cargar con Numero de Agente igual al DNI?" -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
+            } while (not($Continuar.ToLower() -match '^[s|n]$') ) 
+            if ($Continuar.ToLower -eq 's') {
+                $numeroagente=$dni
+                do{
+                    $interno = Read-Host "Es Interno [i] o Externo [e]";
+                }while (-not ($interno.ToLower() -match '^[i|e]$'))
+                do{
+                    $nombre = Read-Host "Escribi el Nombre";
+                    if ((-not ($nombre -match '.*''''.*')) -and (($nombre -match '.*''.*'))) {$nombre=$nombre.Replace('''','''''')}
+                }while (-not ($nombre -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
+                do{
+                    $apellido = Read-Host "Escribi el Apellido";
+                    if ((-not ($apellido -match '.*''''.*')) -and (($apellido -match '.*''.*'))) {$apellido=$apellido.Replace('''','''''')}
+                }while (-not ($apellido -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
+                } else {return}
+            break
+        }
+        1   {$interno = "i"
+            $numeroagente= $data.tables[0].Rows[0]["numero"]  
+            $apellido= $data.tables[0].Rows[0]["Apellido"]
+            $nombre = $data.tables[0].Rows[0]["nombre"]
+            break
+        }
+        Default {Write-Output "Existe más de un agente con ese dni en la base de datos. Reportar el problema a Plataforma"
+                return
+        }
+    }
     do{
         $pat = Read-Host "Es Patólogo 1=SI 0=NO";
-    }while (-not ($pat -match '^[1|0]$'))
-    do{
-        $Continuar = $(Write-Host "Desea Insertar un Médico Externo " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-    }while ((-not($Continuar.toLower() -eq "s")) -and (-not($Continuar.toLower() -eq "n")))
-    if ($Continuar.toLower() -eq "s"){
-        $interno=0
-        $numeroagente=$dni
-        do{
-            $nombre = Read-Host "Escribi el Nombre";
-            if ((-not ($nombre -match '.*''''.*')) -and (($nombre -match '.*''.*'))) {$nombre=$nombre.Replace('''','''''')}
-        }while (-not ($nombre -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
-        do{
-            $apellido = Read-Host "Escribi el Apellido";
-            if ((-not ($apellido -match '.*''''.*')) -and (($apellido -match '.*''.*'))) {$apellido=$apellido.Replace('''','''''')}
-        }while (-not ($apellido -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
-    }
-    else{
-        $interno=1
-        $data = New-Object System.Data.DataSet
-        $query = "select id, numero, documento, Apellido, nombre from Personal_Agentes where documento= '$dni'"
-        #Write-Output $query
-        $data=querydb $query
-        foreach ($Row in $data.tables[0].Rows){
-            Write-Output $Row
-        }
-        Write-Output "Cantidad de resultados en Tabla Personal Agentes" $data.tables[0].Rows.count
-        switch ($data.tables[0].Rows.count) {
-            0 {
-                Write-Output "No existe ningún agente cargado con el DNI Ingresado. Si es agente es de reciente ingreso puede no haber sido dado de alta aún, en cuyo caso puede cargarse con el DNI. Caso contrario reportar el problema a Plataforma"
-                do{
-                    $Continuar = $(Write-Host "¿Desea cargar con Numero de Agente igual al DNI?" -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-                } while ((not($Continuar.ToLower() -eq "s")) -and (not($Continuar.ToLower() -eq "n"))) 
-                if ($Continuar.ToLower -eq 's') {
-                    $numeroagente=$dni
-                    do{
-                        $nombre = Read-Host "Escribi el Nombre";
-                        if ((-not ($nombre -match '.*''''.*')) -and (($nombre -match '.*''.*'))) {$nombre=$nombre.Replace('''','''''')}
-                    }while (-not ($nombre -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
-                    do{
-                        $apellido = Read-Host "Escribi el Apellido";
-                        if ((-not ($apellido -match '.*''''.*')) -and (($apellido -match '.*''.*'))) {$apellido=$apellido.Replace('''','''''')}
-                    }while (-not ($apellido -match '^[a-zA-ZÀ-ÿ\u00f1\u00d1\u0027\u0020]+$')) 
-                } else {return}
-                break
-            }
-            1 {
-                #$numeroagente=
-                $numeroagente= $data.tables[0].Rows[0]["numero"]  
-                $apellido= $data.tables[0].Rows[0]["Apellido"]
-                $nombre = $data.tables[0].Rows[0]["nombre"]
-                break
-            }
-            Default {
-                Write-Output "Existe más de un agente con ese dni en la base de datos. Reportar el problema a Plataforma"
-                return
-            }
-        }
-        }
+    }while (-not ($pat -match '^[1|0]$'))    
     Write-Host "Apellido: " -NoNewline 
     Write-Host  $apellido -ForegroundColor yellow
     Write-Host "Nombre: " -NoNewLine 
     Write-Host $nombre -ForegroundColor yellow
     Write-Host "DNI: " -NoNewLine 
     Write-Host $dni  -ForegroundColor yellow
-    Write-Host "Trabaja en Hospital 1=SI 0=NO: " -NoNewLine 
+    Write-Host "Interno [i]  / Externo [e]: " -NoNewLine 
     Write-Host $interno  -ForegroundColor yellow 
     Write-Host "Patólogo 1=SI 0=NO: " -NoNewLine 
     Write-Host $pat  -ForegroundColor yellow 
     $grabar = $(Write-Host "Estás seguro que querés guardar los cambios en la tabla médicos? (No hagas cagadas te lo pido por favor) " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
     if ($grabar.toLower() -eq "s"){
-        if ($interno -eq 0) {$interno=585} else {$interno=2}
+        if ($interno -eq "i") {$ubicacion=585} else {$ubicacion=2}
         #Write-Output $interno
-        $query ="INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo,patologo,numeroAgente) VALUES ('$apellido', '$nombre', '$dni', $interno, 1,$pat,'$numeroagente')"
+        $query ="INSERT INTO dbo.Medicos  (apellido, nombre, documento, hospitalPrincipal, activo,patologo,numeroAgente) VALUES ('$apellido', '$nombre', '$dni', $ubicacion, 1,$pat,'$numeroagente')"
         #Write-Output $query
-        insertdb $query
-        
+        insertdb $query 
     }
 }
 
