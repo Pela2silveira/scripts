@@ -9,7 +9,7 @@ Function showmenu {
     Write-Host "2. Insertar Nuevo Médico"
     Write-Host "3. Buscar Médicos Inactivos"
     Write-Host "4. Actualizar Matricula "
-    Write-Host "5. Actualizar Activo / No Activo"
+    Write-Host "5. Actualizar Activo | No Activo"
     Write-Host "6. Actualizar Lugar de Trabajo"
     Write-Host "7. Actualizar Tabla Medicos_Funciones"
     Write-Host "8. Exit"
@@ -60,9 +60,7 @@ function updatedb($id,$row,$value){
 
 function buscarmedicodni {
     param ($activo, $dni)
-    do{
-        $dni = Read-Host "Escribi el DNI";
-    }while (-not ($dni -match '^[\d]+$'))
+
     $medicos = New-Object System.Data.DataSet
     $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,$activo FROM dbo.Medicos where activo=1 and documento='$dni'" 
     $medicos = querydb $query
@@ -105,7 +103,7 @@ function buscarmedico{
         {
             "d" {do{
                 $dni = Read-Host "Escribi el DNI del médico para buscarlo en la Tabla Médicos"
-                }while (not($dni -match '^[\d]+$'))
+                }while (-not($dni -match '^[\d]+$'))
                 buscarmedicodni $activo $dni
                 break}
             "a" {$Response = Read-Host "Escribi el Apellido del médico para buscarlo en la Tabla Médicos"      
@@ -121,7 +119,7 @@ function buscarmedico{
                 }
             default { "Comés plastilina?" }
         }
-        $Continuar = Read-Host "Buscar de nuevo? [S/N]";
+        $Continuar = Read-Host "Buscar de nuevo? [S|N]";
     }while($Continuar.ToLower() -eq "s")   
 }
 
@@ -144,7 +142,7 @@ function actualizarmatricula {
         "p"{Write-Host "Nueva Matrícula Provincial " -NoNewLine; 
             Write-Host $matr  -ForegroundColor yellow;
             do{
-                $Continuar = $(Write-Host "Proceder? [S/N] " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
+                $Continuar = $(Write-Host "Proceder? " -NoNewLine) + $(Write-Host "[S|N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
             }while (-not ($Continuar.ToLower() -match '^[s|n]$'))
             if ($Continuar.ToLower() -eq 's') {
             updatedb $id "matriculaProvincial" $matr}
@@ -153,7 +151,7 @@ function actualizarmatricula {
         "n"{Write-Host "Nueva Matrícula Nacional " -NoNewLine;
             Write-Host $matr  -ForegroundColor yellow;
             do{
-                $Continuar = $(Write-Host "Proceder? [S/N] " -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
+                $Continuar = $(Write-Host "Proceder? " -NoNewLine) + $(Write-Host "[S|N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
             }while (-not ($Continuar.ToLower() -match '^[s|n]$'))
             if ($Continuar.ToLower() -eq 's') {
                 updatedb $id "matriculaNacional" $matr}
@@ -225,8 +223,8 @@ function insertarmedico {
             Write-Output "Si es agente es de reciente ingreso puede no haber sido dado de alta aún, o también ser personal externo, en cuyo caso puede cargarse con el DNI."
             Write-Output "Caso contrario reportar el problema a Plataforma."      
             do{
-                $Continuar = $(Write-Host "¿Desea cargar con Numero de Agente igual al DNI?" -NoNewLine) + $(Write-Host "[S/N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
-            } while (not($Continuar.ToLower() -match '^[s|n]$') ) 
+                $Continuar = $(Write-Host "¿Desea cargar con Numero de Agente igual al DNI?" -NoNewLine) + $(Write-Host "[S|N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
+            } while (-not($Continuar.ToLower() -match '^[s|n]$') ) 
             if ($Continuar.ToLower -eq 's') {
                 $numeroagente=$dni
                 do{
@@ -355,7 +353,7 @@ switch($inp){
         5 {
             Clear-Host
             Write-Host "------------------------------";
-            Write-Host "Actualizar Activo/Inactivo";
+            Write-Host "Actualizar Activo|Inactivo";
             Write-Host "------------------------------"; 
             actualizaractivo;
             break
@@ -363,7 +361,7 @@ switch($inp){
         6 {
             Clear-Host
             Write-Host "------------------------------";
-            Write-Host "Actualizar Interno/Externo";
+            Write-Host "Actualizar Interno|Externo";
             Write-Host "------------------------------"; 
             actualizarinterno;
             break
