@@ -59,6 +59,7 @@ function updatedb($id,$row,$value){
 }
 
 function buscarmedicodni {
+    [OutputType("System.Int32")]
     param ($activo, $dni)
 
     $medicos = New-Object System.Data.DataSet
@@ -67,7 +68,9 @@ function buscarmedicodni {
     switch ($medicos.tables[0].Rows.count){
         0 { Write-Output "Sin Resultados"
             pause
-            return 0
+            [int] $id
+            $id=0
+            return $id 
         }
         1 { write-output "Existe"              
             foreach ($Row in $medicos.tables[0].Rows){
@@ -199,13 +202,22 @@ function insertarmedico {
     do{
         $dni = Read-Host "Escribi el DNI";
     }while (-not ($dni -match '^[\d]+$'))
-    $id=buscarmedicodni 1 $dni
-    if ($id -ne 0){
+    #[Int]$id
+    $id=(buscarmedicodni 1 $dni)
+    foreach ($i in $id) { #mersada que tuve q hacer porq no pude q la funcion me devuelva un int
+        $id1= $i
+    } 
+    if (-not($id1 -eq 0 )) 
+        {
         write-output "medico ya activo" 
         pause
-        return}
+        return
+    }
     $id=buscarmedicodni 0 $dni
-    if ($id -ne 0){
+    foreach ($i in $id) { #mersada que tuve q hacer porq no pude q la funcion me devuelva un int
+        $id1= $i
+    }
+    if ($id1 -ne 0){
         write-output "El médico esta cargado pero inactivo. Activarlo desde el menu principal."
         pause
         return}
@@ -313,6 +325,7 @@ function actualizarfunciones{
         insertdb $query
     }else {exit}
 }
+
 showmenu
  
 while(($inp = Read-Host -Prompt "Elegir una Opción") -ne "8"){
@@ -377,5 +390,6 @@ switch($inp){
         8 {"Exit";  break}
         default {Write-Host -ForegroundColor red -BackgroundColor white "Opción Inválida";pause}
     }
+
 showmenu
 }
