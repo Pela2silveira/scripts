@@ -59,34 +59,37 @@ function updatedb($id,$row,$value){
 }
 
 function buscarmedicodni {
-    [OutputType("System.Int32")]
+    #[OutputType("System.Int32")]#no funciono esto
     param ($activo, $dni)
 
     $medicos = New-Object System.Data.DataSet
-    $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,$activo FROM dbo.Medicos where activo=1 and documento='$dni'" 
+    $query = "SELECT id,apellido, nombre, documento, matriculaProvincial, matriculaNacional,hospitalPrincipal,activo FROM dbo.Medicos where activo=$activo and documento='$dni'" 
     $medicos = querydb $query
     switch ($medicos.tables[0].Rows.count){
         0 { Write-Output "Sin Resultados"
             pause
-            [int] $id
-            $id=0
-            return $id 
+            $res= 0
+            return $res 
         }
         1 { write-output "Existe"              
             foreach ($Row in $medicos.tables[0].Rows){
                 Write-Output $Row
             }
           pause
-          return $medicos.tables[0].Rows[0]["id"]  
+          $res= $medicos.tables[0].Rows[0]["id"]
+          return $res  
         }
         default { Write-Output "Hay mas de un profesional. Inconsitencia de Base Datos. Informar a Plataforma"
             foreach ($Row in $medicos.tables[0].Rows){
                 Write-Output $Row
                 }
+            $res= -1
+            
             pause
-            return -1
+            return $res
         }
     }
+    
 }
 function buscarmedicoporid {
     param ( $id, $activo )
@@ -107,7 +110,9 @@ function buscarmedico{
             "d" {do{
                 $dni = Read-Host "Escribi el DNI del médico para buscarlo en la Tabla Médicos"
                 }while (-not($dni -match '^[\d]+$'))
-                buscarmedicodni $activo $dni
+                $id=buscarmedicodni $activo $dni
+                write-output $id
+                $id=$id[-1]
                 break}
             "a" {$Response = Read-Host "Escribi el Apellido del médico para buscarlo en la Tabla Médicos"      
                 if (($Response -match '^[a-zA-Z]+$') -eq $false) {break}
@@ -131,10 +136,12 @@ function actualizarmatricula {
         $dni = Read-Host "Ingrese dni Médico";
     }while (-not ($dni -match '^[\d]+$'))
     $id=buscarmedicodni 1 $dni
+    write-output $id
+    $id=$id[-1]
     if ($id -le 0) {
         return}
     do {
-        $Continuar = $(Write-Host "Proceder? [S|N]" -NoNewLine) + $(Write-Host "[S|N" -ForegroundColor yellow -NoNewLine ;Read-Host )
+        $Continuar = $(Write-Host "Proceder? " -NoNewLine) + $(Write-Host "[S|N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
     }while (-not ($Continuar.ToLower() -match '^[s|n]$'))
     if ($Continuar.ToLower() -eq "n") {return}
     do{
@@ -174,6 +181,8 @@ function actualizaractivo {
             $activo = Read-Host "Ingrese nueva condición activo [1] o Inactivo [0]";
             }while (-not ($activo -match '^[1|0]$'))
         if ($activo -eq 1){$id= buscarmedicodni 0 $dni}else {$id=buscarmedicodni 1 $dni}
+        write-output $id
+        $id=$id[-1]
         if ($id -le 0) {return} 
         $Continuar = $(Write-Host "Esta OK?" -NoNewLine) + $(Write-Host "[S|N]" -ForegroundColor yellow -NoNewLine ;Read-Host )
     }while (-not ($Continuar.ToLower() -match '^[s|n]$'))
@@ -186,6 +195,8 @@ function actualizarinterno {
             $dni = Read-Host "Ingrese dni Médico";
             }while (-not ($dni -match '^[\d]+$'))
         $id=buscarmedicodni 1 $dni
+        write-output $id
+        $id=$id[-1]
         if ($id -le 0){ return}
         do{
             $interno = Read-Host "Ingrese Interno [i] o Externo [e]";
@@ -204,20 +215,18 @@ function insertarmedico {
     }while (-not ($dni -match '^[\d]+$'))
     #[Int]$id
     $id=(buscarmedicodni 1 $dni)
-    foreach ($i in $id) { #mersada que tuve q hacer porq no pude q la funcion me devuelva un int
-        $id1= $i
-    } 
-    if (-not($id1 -eq 0 )) 
+    Write-Output $id
+    $id=$id[-1] #el return de la funcion porq devuelve un array
+    if ($id -ne 0 ) 
         {
         write-output "medico ya activo" 
         pause
         return
     }
     $id=buscarmedicodni 0 $dni
-    foreach ($i in $id) { #mersada que tuve q hacer porq no pude q la funcion me devuelva un int
-        $id1= $i
-    }
-    if ($id1 -ne 0){
+    Write-Output $id
+    $id=$id[-1]
+    if ($id -ne 0){
         write-output "El médico esta cargado pero inactivo. Activarlo desde el menu principal."
         pause
         return}
@@ -229,7 +238,7 @@ function insertarmedico {
     foreach ($Row in $agentes.tables[0].Rows){
         Write-Output $Row
         }
-    Write-Output "Cantidad de resultados en Tabla Personal Agentes" $data.tables[0].Rows.count
+    Write-Output "Cantidad de resultados en Tabla Personal Agentes" $agentes.tables[0].Rows.count
     switch ($agentes.tables[0].Rows.count) {
         0 { Write-Output "No existe ningún agente cargado con el DNI Ingresado."
             Write-Output "Si es agente es de reciente ingreso puede no haber sido dado de alta aún, o también ser personal externo, en cuyo caso puede cargarse con el DNI."
@@ -254,9 +263,9 @@ function insertarmedico {
             break
         }
         1   {$interno = "i"
-            $numeroagente= $data.tables[0].Rows[0]["numero"]  
-            $apellido= $data.tables[0].Rows[0]["Apellido"]
-            $nombre = $data.tables[0].Rows[0]["nombre"]
+            $numeroagente= $agentes.tables[0].Rows[0]["numero"]  
+            $apellido= $agentes.tables[0].Rows[0]["Apellido"]
+            $nombre = $agentes.tables[0].Rows[0]["nombre"]
             break
         }
         Default {Write-Output "Existe más de un agente con ese dni en la base de datos. Reportar el problema a Plataforma"
@@ -291,6 +300,8 @@ function actualizarfunciones{
         $dni = Read-Host "Ingrese dni Médico";
         }while (-not ($dni -match '^[\d]+$'))
     $id=buscarmedicodni 1 $dni
+    write-output $id
+    $id=$id[-1]
     if ($id -le 0) {exit}
     $query = "SELECT idMedico,idFuncion FROM dbo.Medicos_Funciones where idMedico= $id"  
     #Write-Output $query        
