@@ -10,6 +10,8 @@ DATABASE_NAME = os.environ.get("DATABASE_NAME", "nnn")
 COLLECTION_NAME = os.environ.get("COLLECTION_NAME", "nnn")
 QUERY_FILENAME = os.environ.get("QUERY_FILENAME", "resources/mongodb_query.json")
 OUTPUT_FILENAME = os.environ.get("OUTPUT_FILENAME", "outputs/query_response.json")
+GOOD_FILENAME = os.environ.get("OUTPUT_FILENAME", "outputs/good_response.json")
+BAD_FILENAME= os.environ.get("OUTPUT_FILENAME", "outputs/bad_response.json")
 AUTH_TOKEN  = os.environ.get("AUTH_TOKEN", "xxxxx")
 AUTH_CLIENT = os.environ.get("AUTH_CLIENT", "client")
 
@@ -63,6 +65,76 @@ def perform_mongodb_query(db, query):
     except Exception as e:
         print(f"MongoDB Query Error: {e}")
 
+def authenticate_with_keycloak(keycloak_host):
+    token_url = f"{keycloak_host}/auth/realms/dcm4che/protocol/openid-connect/token"
+    # Prepare the payload for the request
+    payload = f"grant_type=client_credentials&client_id={AUTH_CLIENT}&client_secret={AUTH_TOKEN}"
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    try:
+        # Make a POST request to obtain the access token
+        #response = requests.post(token_url, data=data, headers=headers)
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        response = requests.request("POST", token_url, headers=headers, data=payload)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        #print(response.json().get('access_token'))
+        # Parse the JSON response and extract the access token
+        access_token = response.json().get('access_token')
+        return access_token
+    except requests.exceptions.RequestException as e:
+        print(f"Authentication Error: {e}")
+        return None
+
+def exists_study(token, studyUID, aet, host):
+    url = f"{host}/dcm4chee-arc/aets/{aet}/rs/studies/{studyUID}/metadata"
+    payload={}
+    headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/dicom+json'}
+    try:
+        response = requests.request("GET", url, headers=headers, data=payload)
+        return (response.status_code==200)
+    except requests.exceptions.RequestException as e:
+        print(f"Request Error: {e}")
+        return None
+
+def check_links(filename):
+    try:
+        with open(filename, "r") as json_file:
+            data = json.load(json_file)
+            good_responses = []
+            bad_responses = []
+            # Iterate through each object in the array
+            for item in data:
+                study_uid = item.get("studyUID")
+                auth_host = item.get("auth")
+                host = item.get("host")
+                aet = item.get("aet")
+                if study_uid is not None:
+                    token = authenticate_with_keycloak(auth_host)
+                    response = exists_study(token,study_uid,aet,host)
+                    if response:
+                        good_responses.append(item)
+                    else:
+                        bad_responses.append(item)
+                else:
+                    print("Study UID not found in the object")
+                    # Add items to "outputs/good_response.json"
+            if good_responses:
+                with open(GOOD_FILENAME, "w") as good_file:
+                    json.dump(good_responses, good_file, indent=4)
+            # Add items to "outputs/bad_response.json"
+            if bad_responses:
+                with open(BAD_FILENAME, "w") as bad_file:
+                    json.dump(bad_responses, bad_file, indent=4)
+            print("Bad studies: ",len(bad_responses))
+            print("Good studies: ",len(good_responses))
+            print("Efectividad: ",len(good_responses)/(len(good_responses)+len(bad_responses)) )
+
+    except FileNotFoundError:
+        print(f"File '{json_file_path}' not found.")
+    except json.JSONDecodeError as e:
+        print(f"JSON Decoding Error: {e}")
+    except Exception as e:
+        print(f"Error: {e}")
+
 # Main function
 def main():
     while True:
@@ -70,9 +142,7 @@ def main():
         print("1. Query MongoDB for all patients with PACS")
         print("2. Make HTTP Request")
         print("3. Quit")
-        
         choice = input("Enter your choice: ")
-        
         if choice == "1":
             # Connect to MongoDB
             db = connect_to_mongodb(MONGODB_URL, DATABASE_NAME)
@@ -83,10 +153,8 @@ def main():
                     # Perform the MongoDB query
                     perform_mongodb_query(db, mongodb_query)
         elif choice == "2":
-            url = input("Enter the URL for the HTTP request: ")
-            response = make_http_request(url)
-            if response is not None:
-                print(response)
+            check_links(OUTPUT_FILENAME)
+            
         elif choice == "3":
             break
         else:
