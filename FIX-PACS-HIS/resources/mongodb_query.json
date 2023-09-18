@@ -1,0 +1,114 @@
+[
+    {
+        "$match": {
+            "metadata": {
+                "$elemMatch": {
+                    "key": "pacs-uid"
+                }
+            },
+            "estadoActual.tipo": "validada"
+        }
+    },
+    {
+        "$project": {
+            "_id": 1,
+            "paciente.id": "$paciente.id",
+            "paciente.nombre": "$paciente.nombre",
+            "paciente.apellido": "$paciente.apellido",
+            "paciente.dni": "$paciente.dni",
+            "ejecucion.fecha": 1,
+            "pacs-uid": {
+                "$arrayElemAt": [
+                    {
+                        "$filter": {
+                            "input": "$metadata",
+                            "as": "item",
+                            "cond": {
+                                "$eq": [
+                                    "$$item.key",
+                                    "pacs-uid"
+                                ]
+                            }
+                        }
+                    },
+                    0
+                ]
+            },
+            "pacs-config": {
+                "$arrayElemAt": [
+                    {
+                        "$filter": {
+                            "input": "$metadata",
+                            "as": "item",
+                            "cond": {
+                                "$eq": [
+                                    "$$item.key",
+                                    "pacs-config"
+                                ]
+                            }
+                        }
+                    },
+                    0
+                ]
+            }
+        }
+    },
+    {
+        "$lookup": {
+            "from": "pacs-config",
+            "let": {
+                "searchId": "$pacs-config.valor"
+            }, 
+            "pipeline": [
+                {
+                    "$match": {
+                        "$expr": {
+                            "$eq": [
+                                "$_id",
+                                {
+                                    "$toObjectId": "$$searchId"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ],
+            "as": "pacsConfig"
+        }
+    },
+    {
+        "$project": {
+            "_id": 1,
+            "paciente.id": 1,
+            "paciente.nombre": 1,
+            "paciente.apellido": 1,
+            "paciente.dni": 1,
+            "fecha": "$ejecucion.fecha",
+            "studyUID": "$pacs-uid.valor",
+            "modalidad": {
+                "$arrayElemAt": [
+                    "$pacsConfig.modalidad",
+                    0
+                ]
+            },
+            "aet": {
+                "$arrayElemAt": [
+                    "$pacsConfig.aet",
+                    0
+                ]
+            },
+            "host": {
+                "$arrayElemAt": [
+                    "$pacsConfig.host",
+                    0
+                ]
+            },
+            "auth": {
+                "$arrayElemAt": [
+                    "$pacsConfig.auth.host",
+                    0
+                ]
+            }
+        }
+    }
+]
