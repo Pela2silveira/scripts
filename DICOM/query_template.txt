@@ -1,0 +1,3 @@
+(0008,0052) CS [STUDY]         # QueryRetrieveLevel
+(0010,0020) LO [PatientID]     # PatientID
+(0020,000D) UI [*]              # StudyInstanceUID

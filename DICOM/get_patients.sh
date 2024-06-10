@@ -11,7 +11,7 @@ CLIENT_ID=app
 CLIENT_SECRET=xxxxxxxxxxx
 AET=PACS
 
-TOKEN=$(curl -s -k --data "grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}" https://${PACS_HOST}/auth/realms/dcm4che/protocol/openid-connect/token | jq '.access_token' | tr -d '"' )
+TOKEN=$(curl -s -k --data "grant_type=client_credentials&client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}" https://${KEYCLOAK_HOST}/auth/realms/dcm4che/protocol/openid-connect/token | jq '.access_token' | tr -d '"' )
 
 echo "before"
 for num in {0..8500..100}
