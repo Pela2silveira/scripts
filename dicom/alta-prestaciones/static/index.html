@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PACS config — alta prestaciones</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #fff;
+      --border: #d8dde6;
+      --text: #1a1f2e;
+      --muted: #5c6578;
+      --accent: #0b5ea8;
+      --ok: #1b7f4e;
+      --warn: #9a6700;
+      --danger: #b42318;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    header {
+      background: #132238;
+      color: #e8eef7;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+    .badge {
+      font-size: 12px;
+      background: #2a4060;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: #b8c7dd;
+    }
+    .badge.ok { background: #1b7f4e; color: #fff; }
+    .badge.err { background: var(--danger); color: #fff; }
+    main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    nav.tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    nav.tabs button {
+      border: 0;
+      background: transparent;
+      padding: 10px 14px;
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 2px solid transparent;
+    }
+    nav.tabs button.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    input, select, textarea {
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      min-width: 140px;
+      background: #fff;
+      color: var(--text);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid #b7d4f0;
+      border-color: var(--accent);
+    }
+    button.btn {
+      font: inherit;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button.btn.secondary {
+      background: #fff;
+      color: var(--accent);
+    }
+    button.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+    tr:hover td { background: #f8fafc; }
+    .muted { color: var(--muted); }
+    .mono { font-family: var(--mono); font-size: 12px; }
+    .results { max-height: 420px; overflow: auto; }
+    .pick-list {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      max-height: 180px;
+      overflow: auto;
+      margin-top: 6px;
+    }
+    .pick-list button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      background: #fff;
+      padding: 8px 10px;
+      cursor: pointer;
+      font: inherit;
+    }
+    .pick-list button:hover { background: #eef5fc; }
+    .pick-list button.selected { background: #dceaf8; }
+    .selected-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: #f0f7ff;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    pre.json {
+      background: #0f1724;
+      color: #e2e8f0;
+      padding: 14px;
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 520px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 800px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+    .detail {
+      display: none;
+      margin-top: 12px;
+    }
+    .detail.open { display: block; }
+    .warn-box {
+      background: #fff8e6;
+      border: 1px solid #f0d78c;
+      color: #7a5b00;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin: 10px 0;
+    }
+    .err-box {
+      background: #fef3f2;
+      border: 1px solid #f3b4ae;
+      color: var(--danger);
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin: 10px 0;
+    }
+    .ok-box {
+      background: #eef8f2;
+      border: 1px solid #a7d4b8;
+      color: var(--ok);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin: 8px 0 0;
+    }
+    tr.dup td { background: #fff4f2; }
+    .ui-num { font-weight: 700; font-family: var(--mono); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PACS config</h1>
+    <span class="badge">solo lectura</span>
+    <span id="health" class="badge">…</span>
+  </header>
+
+  <main>
+    <nav class="tabs">
+      <button type="button" class="active" data-tab="consultar">Consultar</button>
+      <button type="button" data-tab="oids">UI OIDs</button>
+      <button type="button" data-tab="alta">Generar alta</button>
+    </nav>
+
+    <!-- CONSULTAR -->
+    <section id="tab-consultar" class="panel active">
+      <p class="hint">Listá y filtrá documentos de <code>pacs-config</code>. Click en una fila para ver el JSON completo.</p>
+      <div class="card">
+        <div class="row">
+          <label>Texto libre
+            <input id="f-q" type="search" placeholder="org, aet, host…" />
+          </label>
+          <label>Organización
+            <input id="f-org" type="search" placeholder="nombre…" />
+          </label>
+          <label>Modalidad
+            <select id="f-modalidad">
+              <option value="">(todas)</option>
+            </select>
+          </label>
+          <label>AET
+            <input id="f-aet" type="search" placeholder="PACSHCM…" />
+          </label>
+          <label>UI #
+            <input id="f-ui" type="search" placeholder="201" style="min-width:90px" />
+          </label>
+          <button class="btn" type="button" id="btn-buscar">Buscar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="muted" id="result-meta">Sin resultados aún.</div>
+        <div class="results">
+          <table>
+            <thead>
+              <tr>
+                <th>UI #</th>
+                <th>Organización</th>
+                <th>Mod</th>
+                <th>AET</th>
+                <th>Host</th>
+                <th>Prestación</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="detail" id="detail">
+          <div class="actions">
+            <button class="btn secondary" type="button" id="btn-copy-detail">Copiar JSON</button>
+          </div>
+          <pre class="json" id="detail-json"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- UI OIDs -->
+    <section id="tab-oids" class="panel">
+      <p class="hint">
+        Prefijo <code id="oid-prefix">2.16.840.1.113883.2.10.35.1.</code><strong>N</strong> —
+        el número <strong>N</strong> debe ser único por organización (varias prestaciones de la misma org reusan el mismo N).
+      </p>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div>
+            <div class="muted" id="oid-meta">Cargando…</div>
+            <div id="oid-next" class="ok-box" style="display:none"></div>
+          </div>
+          <button class="btn secondary" type="button" id="btn-reload-oids">Recargar</button>
+        </div>
+        <div id="oid-dups" class="err-box" style="display:none"></div>
+      </div>
+      <div class="card">
+        <div class="results">
+          <table>
+            <thead>
+              <tr>
+                <th>UI #</th>
+                <th>OID</th>
+                <th>Organización(es)</th>
+                <th>Configs</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="oid-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ALTA -->
+    <section id="tab-alta" class="panel">
+      <p class="hint">
+        Buscá organización y concepto turneable, completá modalidad / host / aet.
+        El UI # se asigna solo: reusa el de la org si ya tiene, o el siguiente libre. <strong>No escribe en la BD.</strong>
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <label>Buscar organización
+            <input id="org-q" type="search" placeholder="mín. 2 caracteres…" />
+          </label>
+          <div class="pick-list" id="org-list"></div>
+          <div class="selected-box" id="org-selected">Ninguna seleccionada</div>
+        </div>
+        <div class="card">
+          <label>Buscar concepto turneable
+            <input id="concepto-q" type="search" placeholder="ecografía, RX…" />
+          </label>
+          <div class="pick-list" id="concepto-list"></div>
+          <div class="selected-box" id="concepto-selected">Ninguno seleccionado</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <label>Modalidad *
+            <input id="a-modalidad" list="modalidades-list" placeholder="US" />
+            <datalist id="modalidades-list"></datalist>
+          </label>
+          <label>AET *
+            <input id="a-aet" placeholder="PACSHCM" />
+          </label>
+          <label>Host *
+            <input id="a-host" style="min-width:280px" placeholder="https://pacshcm.andes.gob.ar" />
+          </label>
+          <label>UI # *
+            <input id="a-ui-suffix" type="number" min="1" style="min-width:100px" placeholder="215" />
+          </label>
+          <label>UI OID (auto)
+            <input id="a-ui" class="mono" style="min-width:280px" readonly />
+          </label>
+        </div>
+        <div id="ui-hint" class="ok-box" style="display:none"></div>
+        <div id="ui-warn" class="err-box" style="display:none"></div>
+        <div class="row" style="margin-top:10px">
+          <label>visualizador_host
+            <input id="a-visor" style="min-width:280px" placeholder="se sugiere desde host" />
+          </label>
+          <label>auth.host
+            <input id="a-auth-host" style="min-width:280px" placeholder="se sugiere desde host" />
+          </label>
+          <label>auth.clientId
+            <input id="a-client-id" />
+          </label>
+          <label>auth.clientSecret
+            <input id="a-client-secret" type="password" />
+          </label>
+          <label>usoIdDNI
+            <select id="a-uso-dni">
+              <option value="true" selected>true</option>
+              <option value="false">false</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions" style="margin-top:14px">
+          <button class="btn" type="button" id="btn-generar">Generar JSON</button>
+          <button class="btn secondary" type="button" id="btn-sugerir">Sugerir hosts</button>
+        </div>
+      </div>
+
+      <div class="card" id="gen-card" style="display:none">
+        <div class="actions">
+          <button class="btn secondary" type="button" data-copy="gen-compass">Copiar Extended JSON (Compass)</button>
+          <button class="btn secondary" type="button" data-copy="gen-mongosh">Copiar mongosh</button>
+        </div>
+        <label style="margin-bottom:6px">Extended JSON (Compass / mongoimport)
+          <textarea id="gen-compass" class="mono" rows="18" readonly style="width:100%;min-width:100%"></textarea>
+        </label>
+        <label style="margin-top:12px">mongosh
+          <textarea id="gen-mongosh" class="mono" rows="14" readonly style="width:100%;min-width:100%"></textarea>
+        </label>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      selectedOrg: null,
+      selectedConcepto: null,
+      lastDetail: null,
+      uiPrefix: "2.16.840.1.113883.2.10.35.1.",
+      nextSuffix: null,
+    };
+
+    // Tabs
+    document.querySelectorAll("nav.tabs button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+        if (btn.dataset.tab === "oids") loadOids().catch((e) => alert(e.message));
+      });
+    });
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = text; }
+      if (!res.ok) {
+        const msg = (data && data.detail) ? data.detail : text;
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    function oid(doc) {
+      if (!doc || !doc._id) return "";
+      if (typeof doc._id === "string") return doc._id;
+      if (doc._id.$oid) return doc._id.$oid;
+      return String(doc._id);
+    }
+
+    function syncUiOid() {
+      const suf = document.getElementById("a-ui-suffix").value.trim();
+      document.getElementById("a-ui").value = suf ? state.uiPrefix + suf : "";
+    }
+
+    // Health
+    (async () => {
+      const el = document.getElementById("health");
+      try {
+        const h = await api("/api/health");
+        el.textContent = h.database + " · ok";
+        el.classList.add("ok");
+      } catch (e) {
+        el.textContent = "mongo error";
+        el.classList.add("err");
+      }
+    })();
+
+    // Modalidades
+    (async () => {
+      try {
+        const data = await api("/api/pacs-config/modalidades");
+        const sel = document.getElementById("f-modalidad");
+        const dl = document.getElementById("modalidades-list");
+        data.items.forEach((m) => {
+          const o = document.createElement("option");
+          o.value = m;
+          o.textContent = m;
+          sel.appendChild(o);
+          const o2 = document.createElement("option");
+          o2.value = m;
+          dl.appendChild(o2);
+        });
+      } catch (_) {}
+    })();
+
+    // Defaults for alta
+    (async () => {
+      try {
+        const d = await api("/api/defaults");
+        document.getElementById("a-client-id").value = d.auth.clientId || "";
+        document.getElementById("a-client-secret").value = d.auth.clientSecret || "";
+        if (d.uiOidPrefix) {
+          state.uiPrefix = d.uiOidPrefix;
+          document.getElementById("oid-prefix").textContent = d.uiOidPrefix;
+        }
+      } catch (_) {}
+    })();
+
+    // Consultar
+    async function buscar() {
+      const params = new URLSearchParams();
+      const q = document.getElementById("f-q").value.trim();
+      const org = document.getElementById("f-org").value.trim();
+      const modalidad = document.getElementById("f-modalidad").value.trim();
+      const aet = document.getElementById("f-aet").value.trim();
+      const ui = document.getElementById("f-ui").value.trim();
+      if (q) params.set("q", q);
+      if (org) params.set("org", org);
+      if (modalidad) params.set("modalidad", modalidad);
+      if (aet) params.set("aet", aet);
+      if (ui) params.set("ui", ui);
+      const data = await api("/api/pacs-config?" + params.toString());
+      const tbody = document.getElementById("tbody");
+      tbody.innerHTML = "";
+      document.getElementById("result-meta").textContent = data.count + " resultado(s)";
+      document.getElementById("detail").classList.remove("open");
+      data.items.forEach((item) => {
+        const tr = document.createElement("tr");
+        tr.style.cursor = "pointer";
+        const prest = (item.tipoPrestacion && item.tipoPrestacion[0])
+          ? (item.tipoPrestacion[0].term || item.tipoPrestacion[0].nombre || "")
+          : "";
+        const suf = item.uiSuffix != null ? item.uiSuffix : "—";
+        tr.innerHTML = `
+          <td class="ui-num">${suf}</td>
+          <td>${(item.organizacion && item.organizacion.nombre) || "—"}</td>
+          <td class="mono">${item.modalidad || ""}</td>
+          <td class="mono">${item.aet || ""}</td>
+          <td class="mono">${item.host || ""}</td>
+          <td>${prest}</td>`;
+        tr.addEventListener("click", () => {
+          state.lastDetail = item;
+          document.getElementById("detail-json").textContent = JSON.stringify(item, null, 2);
+          document.getElementById("detail").classList.add("open");
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById("btn-buscar").addEventListener("click", () => {
+      buscar().catch((e) => alert(e.message));
+    });
+    ["f-q", "f-org", "f-aet", "f-ui"].forEach((id) => {
+      document.getElementById(id).addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") buscar().catch((e) => alert(e.message));
+      });
+    });
+    document.getElementById("btn-copy-detail").addEventListener("click", async () => {
+      if (!state.lastDetail) return;
+      await navigator.clipboard.writeText(JSON.stringify(state.lastDetail, null, 2));
+    });
+
+    // UI OID registry
+    async function loadOids() {
+      const data = await api("/api/ui-oids");
+      state.uiPrefix = data.prefix || state.uiPrefix;
+      state.nextSuffix = data.nextSuffix;
+      document.getElementById("oid-prefix").textContent = state.uiPrefix;
+      document.getElementById("oid-meta").textContent =
+        `${data.usedCount} sufijos en uso · rango ${data.minSuffix}–${data.maxSuffix}` +
+        (data.gaps && data.gaps.length ? ` · huecos: ${data.gaps.join(", ")}` : "");
+      const nextEl = document.getElementById("oid-next");
+      nextEl.style.display = "block";
+      nextEl.textContent = `Próximo libre: ${data.nextSuffix} → ${data.nextUi}`;
+
+      const dups = document.getElementById("oid-dups");
+      if (data.duplicates && data.duplicates.length) {
+        dups.style.display = "block";
+        dups.innerHTML = "<strong>Duplicados (mismo # en varias orgs):</strong><ul style='margin:6px 0 0;padding-left:18px'>" +
+          data.duplicates.map((d) =>
+            `<li><span class="ui-num">${d.suffix}</span> — ${
+              d.organizaciones.map((o) => o.nombre).join(" · ")
+            }</li>`
+          ).join("") + "</ul>";
+      } else {
+        dups.style.display = "none";
+      }
+
+      const tbody = document.getElementById("oid-tbody");
+      tbody.innerHTML = "";
+      data.assignments.forEach((row) => {
+        const tr = document.createElement("tr");
+        if (row.orgCount > 1) tr.classList.add("dup");
+        const orgs = row.organizaciones.map((o) =>
+          `${o.nombre} <span class="muted">(${o.configs})</span>`
+        ).join("<br>");
+        tr.innerHTML = `
+          <td class="ui-num">${row.suffix}</td>
+          <td class="mono">${row.ui}</td>
+          <td>${orgs}</td>
+          <td>${row.configCount}</td>
+          <td>${row.orgCount > 1 ? '<span style="color:var(--danger);font-weight:600">DUP</span>' : ""}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    document.getElementById("btn-reload-oids").addEventListener("click", () => {
+      loadOids().catch((e) => alert(e.message));
+    });
+
+    // Debounced search helper
+    function debounce(fn, ms) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    async function suggestUiForOrg(orgId) {
+      const hint = document.getElementById("ui-hint");
+      const warn = document.getElementById("ui-warn");
+      hint.style.display = "none";
+      warn.style.display = "none";
+      const data = await api("/api/ui-oids?orgId=" + encodeURIComponent(orgId));
+      state.nextSuffix = data.nextSuffix;
+      const s = data.suggestion;
+      document.getElementById("a-ui-suffix").value = s.suffix;
+      syncUiOid();
+      hint.style.display = "block";
+      if (s.reason === "reuse_org") {
+        hint.textContent = `Org ya tiene UI #${s.suffix} — se reusa (no asigna uno nuevo).`;
+      } else {
+        hint.textContent = `Org sin UI — se asigna el siguiente libre: #${s.suffix}.`;
+      }
+      if (data.warnings && data.warnings.length) {
+        warn.style.display = "block";
+        warn.textContent = data.warnings.join(" ");
+      }
+    }
+
+    async function checkUiSuffix() {
+      const warn = document.getElementById("ui-warn");
+      const suf = document.getElementById("a-ui-suffix").value.trim();
+      syncUiOid();
+      if (!suf) return;
+      const params = new URLSearchParams({ suffix: suf });
+      if (state.selectedOrg) params.set("orgId", oid(state.selectedOrg));
+      try {
+        const c = await api("/api/ui-oids/check?" + params.toString());
+        if (!c.ok) {
+          warn.style.display = "block";
+          const names = (c.organizaciones || []).map((o) => o.nombre).join(", ");
+          warn.textContent = `${c.message}${names ? ": " + names : ""}`;
+        } else if (c.status === "owned") {
+          warn.style.display = "none";
+          document.getElementById("ui-hint").style.display = "block";
+          document.getElementById("ui-hint").textContent = c.message;
+        } else {
+          warn.style.display = "none";
+        }
+      } catch (e) {
+        warn.style.display = "block";
+        warn.textContent = e.message;
+      }
+    }
+
+    document.getElementById("a-ui-suffix").addEventListener("input", () => {
+      syncUiOid();
+    });
+    document.getElementById("a-ui-suffix").addEventListener("change", () => {
+      checkUiSuffix().catch(() => {});
+    });
+
+    // Org search
+    const searchOrgs = debounce(async () => {
+      const q = document.getElementById("org-q").value.trim();
+      const list = document.getElementById("org-list");
+      list.innerHTML = "";
+      if (q.length < 2) return;
+      try {
+        const data = await api("/api/organizaciones?q=" + encodeURIComponent(q));
+        data.items.forEach((org) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = org.nombre + (org.codigo ? " · " + org.codigo : "");
+          b.addEventListener("click", async () => {
+            state.selectedOrg = org;
+            list.querySelectorAll("button").forEach((x) => x.classList.remove("selected"));
+            b.classList.add("selected");
+            document.getElementById("org-selected").innerHTML =
+              `<strong>${org.nombre}</strong><br><span class="mono">${oid(org)}</span>`;
+            try {
+              await suggestUiForOrg(oid(org));
+            } catch (e) {
+              document.getElementById("ui-warn").style.display = "block";
+              document.getElementById("ui-warn").textContent = e.message;
+            }
+          });
+          list.appendChild(b);
+        });
+      } catch (e) {
+        list.innerHTML = `<div class="muted" style="padding:8px">${e.message}</div>`;
+      }
+    }, 280);
+    document.getElementById("org-q").addEventListener("input", searchOrgs);
+
+    // Concepto search
+    const searchConceptos = debounce(async () => {
+      const q = document.getElementById("concepto-q").value.trim();
+      const list = document.getElementById("concepto-list");
+      list.innerHTML = "";
+      if (q.length < 2) return;
+      try {
+        const data = await api("/api/conceptos?q=" + encodeURIComponent(q));
+        data.items.forEach((c) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = (c.term || c.fsn || "") + (c.conceptId ? " · " + c.conceptId : "");
+          b.addEventListener("click", () => {
+            state.selectedConcepto = c;
+            list.querySelectorAll("button").forEach((x) => x.classList.remove("selected"));
+            b.classList.add("selected");
+            document.getElementById("concepto-selected").innerHTML =
+              `<strong>${c.term || ""}</strong><br><span class="mono">${oid(c)}</span>`;
+          });
+          list.appendChild(b);
+        });
+      } catch (e) {
+        list.innerHTML = `<div class="muted" style="padding:8px">${e.message}</div>`;
+      }
+    }, 280);
+    document.getElementById("concepto-q").addEventListener("input", searchConceptos);
+
+    // Suggest hosts
+    document.getElementById("btn-sugerir").addEventListener("click", async () => {
+      const host = document.getElementById("a-host").value.trim();
+      if (!host) return alert("Completá host primero");
+      try {
+        const s = await api("/api/suggest-hosts?host=" + encodeURIComponent(host));
+        if (s.visualizador_host) document.getElementById("a-visor").value = s.visualizador_host;
+        if (s.auth_host) document.getElementById("a-auth-host").value = s.auth_host;
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+
+    document.getElementById("a-host").addEventListener("blur", () => {
+      document.getElementById("btn-sugerir").click();
+    });
+
+    // Generar
+    document.getElementById("btn-generar").addEventListener("click", async () => {
+      if (!state.selectedOrg) return alert("Seleccioná una organización");
+      if (!state.selectedConcepto) return alert("Seleccioná un concepto turneable");
+      const suf = document.getElementById("a-ui-suffix").value.trim();
+      const body = {
+        organizacionId: oid(state.selectedOrg),
+        conceptoId: oid(state.selectedConcepto),
+        modalidad: document.getElementById("a-modalidad").value.trim(),
+        aet: document.getElementById("a-aet").value.trim(),
+        host: document.getElementById("a-host").value.trim(),
+        uiSuffix: suf || undefined,
+        visualizador_host: document.getElementById("a-visor").value.trim(),
+        auth_host: document.getElementById("a-auth-host").value.trim(),
+        clientId: document.getElementById("a-client-id").value.trim(),
+        clientSecret: document.getElementById("a-client-secret").value.trim(),
+        usoIdDNI: document.getElementById("a-uso-dni").value === "true",
+      };
+      try {
+        const data = await api("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        document.getElementById("gen-card").style.display = "block";
+        document.getElementById("gen-compass").value = JSON.stringify(data.document, null, 2);
+        document.getElementById("gen-mongosh").value = data.mongosh;
+        if (data.warnings && data.warnings.length) {
+          document.getElementById("ui-warn").style.display = "block";
+          document.getElementById("ui-warn").textContent = data.warnings.join(" ");
+        }
+        if (data.ui) {
+          document.getElementById("a-ui-suffix").value = data.ui.suffix;
+          syncUiOid();
+        }
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+
+    document.querySelectorAll("[data-copy]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const el = document.getElementById(btn.dataset.copy);
+        await navigator.clipboard.writeText(el.value);
+        const prev = btn.textContent;
+        btn.textContent = "Copiado";
+        setTimeout(() => { btn.textContent = prev; }, 1200);
+      });
+    });
+
+    buscar().catch(() => {});
+    loadOids().catch(() => {});
+  </script>
+</body>
+</html>
